@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EduGenie</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="card">
+    <h1>🎓 EduGenie</h1>
+    <p class="sub">Gemini Powered Learning Assistant</p>
+    <label for="task">Task</label>
+    <select id="task">
+      <option value="explain">Explain</option>
+      <option value="qa">QnA</option>
+      <option value="quiz">Quiz</option>
+      <option value="summarize">Summary</option>
+      <option value="learn/recommendations">Recommend Path</option>
+    </select>
+    <label for="input">Your input</label>
+    <textarea id="input" rows="6" placeholder="Type a topic, question or passage..."></textarea>
+    <button id="go">Submit</button>
+    <div id="result" class="result"></div>
+  </div>
+  <script>
+    const btn = document.getElementById("go");
+    const out = document.getElementById("result");
+
+    function renderQuiz(quiz) {
+      out.innerHTML = "";
+      quiz.forEach((q, i) => {
+        const box = document.createElement("div");
+        box.className = "q";
+        box.innerHTML = `<b>Q${i + 1}. </b>`;
+        box.append(q.question);
+        const msg = document.createElement("div");
+        msg.className = "msg";
+        q.options.forEach(opt => {
+          const b = document.createElement("button");
+          b.className = "opt";
+          b.textContent = opt;
+          b.onclick = () => {
+            box.querySelectorAll(".opt").forEach(x => {
+              x.disabled = true;
+              if (x.textContent === q.answer) x.classList.add("right");
+            });
+            if (opt === q.answer) msg.textContent = "✅ Correct!";
+            else { b.classList.add("wrong"); msg.textContent = "❌ Correct answer: " + q.answer; }
+          };
+          box.append(b);
+        });
+        box.append(msg);
+        out.append(box);
+      });
+    }
+
+    btn.onclick = async () => {
+      const text = document.getElementById("input").value.trim();
+      const task = document.getElementById("task").value;
+      if (!text) { out.textContent = "Please enter some text."; return; }
+      btn.disabled = true;
+      out.textContent = "Thinking...";
+      try {
+        const res = await fetch("/" + task, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        const r = data.result;
+        if (task === "quiz" && Array.isArray(r)) renderQuiz(r);
+        else out.textContent = typeof r === "string" ? r : (r.error || JSON.stringify(r, null, 2));
+      } catch (e) {
+        out.textContent = "Error: " + e;
+      }
+      btn.disabled = false;
+    };
+  </script>
+</body>
+</html>
